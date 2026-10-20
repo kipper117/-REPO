@@ -8,10 +8,22 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
+
+NY_TZ = ZoneInfo("America/New_York")
+
+
+def _us_market_is_open(now_ny: datetime) -> bool:
+    """대략적인 정규장 시간 체크 (09:30~16:00 ET, 평일). 공휴일은 고려하지 않는다."""
+    if now_ny.weekday() >= 5:
+        return False
+    open_t = now_ny.replace(hour=9, minute=30, second=0, microsecond=0)
+    close_t = now_ny.replace(hour=16, minute=0, second=0, microsecond=0)
+    return open_t <= now_ny < close_t
 
 
 def fetch_last_two_closes(ticker: str) -> dict:
@@ -24,6 +36,15 @@ def fetch_last_two_closes(ticker: str) -> dict:
     try:
         hist = yf.Ticker(ticker).history(period="5d", interval="1d")
         hist = hist.dropna(subset=["Close"])
+
+        # 장중에 조회하면 yfinance가 "오늘(미완성)" 봉을 마지막 행으로 얹어준다.
+        # 그걸 전일 종가처럼 쓰면 안 되므로, 장이 열려 있고 마지막 봉이 오늘 날짜면 제외한다.
+        now_ny = datetime.now(NY_TZ)
+        if len(hist) > 0 and _us_market_is_open(now_ny):
+            last_date = hist.index[-1].strftime("%Y-%m-%d")
+            if last_date == now_ny.strftime("%Y-%m-%d"):
+                hist = hist.iloc[:-1]
+
         if len(hist) < 2:
             return {"ok": False, "reason": f"insufficient history ({len(hist)} rows)"}
 
