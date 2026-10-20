@@ -7,12 +7,18 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from datetime import datetime, timezone
 
 from . import config
 from .data_sources import fred_client, finnhub_client, yfinance_client
 
 logger = logging.getLogger(__name__)
+
+# 대표 거래일(헤더 날짜 + 기대 거래일 검증)은 이 세 지수만으로 판단한다.
+# DXY(거의 24시간 거래)나 FRED(발표 시각이 달라 당일 데이터가 늦게 올라올 수 있음)는
+# 발행/거래 시간이 달라서 날짜가 어긋나기 쉬우므로 대표 거래일 판정에서 제외한다.
+PRIMARY_TRADE_DATE_SOURCES = ("S&P500", "NASDAQ", "DOW")
 
 
 def _check_stock_anomaly(change_pct: float) -> bool:
@@ -27,7 +33,8 @@ def build_snapshot() -> dict:
     """모든 소스를 조회해 snapshot dict를 만든다. (네트워크 호출 발생)"""
     failures: list[dict] = []
     anomalies: list[dict] = []
-    trade_dates: set[str] = set()
+    trade_dates_seen: list[str] = []  # 디버그/참고용 (중복 허용)
+    primary_trade_dates: list[str] = []  # 대표 거래일 판정용 (3대 지수만)
 
     # --- 지수/달러인덱스 ---
     indices: dict[str, dict] = {}
@@ -35,7 +42,9 @@ def build_snapshot() -> dict:
         result = yfinance_client.fetch_last_two_closes(ticker)
         indices[name] = result
         if result.get("ok"):
-            trade_dates.add(result["trade_date"])
+            trade_dates_seen.append(result["trade_date"])
+            if name in PRIMARY_TRADE_DATE_SOURCES:
+                primary_trade_dates.append(result["trade_date"])
             if _check_stock_anomaly(result["change_pct"]):
                 anomalies.append({"item": name, "value": result["change_pct"], "kind": "stock_pct"})
         else:
@@ -49,7 +58,7 @@ def build_snapshot() -> dict:
         entry = {"ticker": ticker, "name_kr": stock["name_kr"], "sector": stock["sector"], **result}
         top20.append(entry)
         if result.get("ok"):
-            trade_dates.add(result["trade_date"])
+            trade_dates_seen.append(result["trade_date"])
             if _check_stock_anomaly(result["change_pct"]):
                 anomalies.append({"item": ticker, "value": result["change_pct"], "kind": "stock_pct"})
         else:
@@ -61,7 +70,7 @@ def build_snapshot() -> dict:
         result = fred_client.fetch_latest_two_observations(series_id)
         rates[name] = result
         if result.get("ok"):
-            trade_dates.add(result["trade_date"])
+            trade_dates_seen.append(result["trade_date"])
             if _check_rate_anomaly(result["change_bp"]):
                 anomalies.append({"item": name, "value": result["change_bp"], "kind": "rate_bp"})
         else:
@@ -72,13 +81,14 @@ def build_snapshot() -> dict:
     if not news.get("ok"):
         failures.append({"item": "news_headlines", "reason": news.get("reason")})
 
-    # 가장 흔한(=다수가 동의하는) 거래일을 대표 거래일로 채택
-    trade_date = max(trade_dates, key=lambda d: sum(1 for t in trade_dates if t == d)) if trade_dates else None
+    # 대표 거래일: S&P500/NASDAQ/DOW 중 가장 많이 나온 날짜(보통 셋 다 동일).
+    # DXY/종목/금리는 거래·발표 시간이 달라 날짜가 어긋날 수 있어 판정에서 제외한다.
+    trade_date = Counter(primary_trade_dates).most_common(1)[0][0] if primary_trade_dates else None
 
     snapshot = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "trade_date": trade_date,
-        "trade_dates_seen": sorted(trade_dates),
+        "trade_dates_seen": sorted(set(trade_dates_seen)),
         "indices": indices,
         "top20_stocks": top20,
         "rates": rates,
