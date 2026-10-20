@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from . import claude_comment, snapshot as snapshot_mod, telegram_sender
+from . import claude_comment, sheets_writer, snapshot as snapshot_mod, telegram_sender
 from .formatters import bond_message, news_section, stock_message
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -73,6 +73,12 @@ def run() -> None:
         parts.append(f"> {comment}")
 
     telegram_sender.send_briefing("\n\n".join(parts))
+
+    # 구글 스프레드시트 기록: 실패해도 텔레그램 발송 자체는 이미 끝났으니 경고만 추가한다.
+    sheet_result = sheets_writer.append_snapshot(snap)
+    if not sheet_result.get("ok"):
+        snap["failures"].append({"item": "google_sheets", "reason": sheet_result.get("reason")})
+
     telegram_sender.send_warning(snap["failures"], snap["anomalies"])
 
     logger.info("done. failures=%d anomalies=%d", len(snap["failures"]), len(snap["anomalies"]))
