@@ -1,0 +1,39 @@
+name: Daily Market Briefing
+
+on:
+  schedule:
+    # 평일 07:00 KST == UTC 전날 22:00 (KST는 DST 없음, 고정 UTC+9)
+    # cron 요일: 0=일,1=월,2=화,3=수,4=목 (UTC) -> KST 월~금 07:00에 해당
+    - cron: "0 22 * * 0-4"
+  workflow_dispatch: {}
+
+jobs:
+  send-briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run briefing
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.main
+
+      - name: Upload snapshot (debug artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-${{ github.run_id }}
+          path: snapshot.json
+          retention-days: 14
