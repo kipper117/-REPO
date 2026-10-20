@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from . import claude_comment, snapshot as snapshot_mod, telegram_sender
-from .formatters import bond_message, stock_message
+from .formatters import bond_message, news_section, stock_message
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -56,7 +56,16 @@ def run() -> None:
     headlines = news.get("headlines") if news.get("ok") else None
     comment = claude_comment.generate_one_line_comment(snap, headlines)
 
-    parts = [stock_message.build_stock_section(snap)]
+    # 전일 핵심 이슈: Claude로 한국어 요약 시도, 안 되면 원문 헤드라인으로 대체
+    news_bullets = claude_comment.generate_top_news_bullets(headlines) if headlines else None
+    if not news_bullets:
+        news_bullets = headlines
+
+    parts = []
+    news_text = news_section.build_news_section(news_bullets)
+    if news_text:
+        parts.append(news_text)
+    parts.append(stock_message.build_stock_section(snap))
     bond_section = bond_message.build_bond_section(snap)
     if bond_section:
         parts.append(bond_section)

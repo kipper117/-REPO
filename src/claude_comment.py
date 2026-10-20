@@ -108,3 +108,44 @@ def generate_one_line_comment(snapshot: dict, news_headlines: list[str] | None =
         return None
 
     return comment
+
+
+NEWS_SYSTEM_PROMPT = """\
+너는 미국 증시 개장 전 고객에게 보내는 "전일 핵심 이슈" 뉴스 요약을 쓰는 보조 작성자다.
+주어진 영어 뉴스 헤드라인들 중에서 미국 증시와 가장 관련이 큰 것들을 골라 한국어로 요약하라.
+반드시 지켜야 할 규칙:
+1. 3~5개 항목을 만들고, 각 항목은 줄바꿈으로만 구분해서 출력하라. 번호(1. 2. 등)는 붙이지 마라 (다른 코드가 붙인다).
+2. 각 항목은 한국어 한 문장(35자 내외)으로, 있었던 사실만 담백하게 서술하라.
+3. 헤드라인에 명시되지 않은 수치(%, 달러, bp 등)는 지어내지 마라. 불확실하면 수치 없이 서술하라.
+4. 매수/매도/비중확대/비중축소 등 투자 권유 표현을 쓰지 마라.
+5. "내일 오를 것이다" 같은 단정적 전망을 쓰지 마라.
+6. 항목 줄 외의 다른 설명(머리말, 결론, 번호, 불릿 기호 등)을 절대 덧붙이지 마라.
+"""
+
+
+def generate_top_news_bullets(headlines: list[str], max_items: int = 5) -> list[str] | None:
+    """
+    영어 헤드라인들을 한국어 핵심 이슈 3~5줄로 요약/번역한다.
+    실패하거나 키가 없으면 None (호출부가 원문 헤드라인으로 대체하거나 섹션을 생략해야 한다).
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or not headlines:
+        return None
+
+    user_prompt = "영어 뉴스 헤드라인:\n" + "\n".join(f"- {h}" for h in headlines)
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=DEFAULT_MODEL,
+            max_tokens=400,
+            system=NEWS_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        text = response.content[0].text.strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Claude news summary generation failed: %s", exc)
+        return None
+
+    bullets = [line.strip(" -•") for line in text.splitlines() if line.strip()]
+    return bullets[:max_items] if bullets else None

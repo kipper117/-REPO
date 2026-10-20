@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.formatters import bond_message, common, stock_message  # noqa: E402
+from src.formatters import bond_message, common, news_section, stock_message  # noqa: E402
 
 FIXTURE_SNAPSHOT = {
     "trade_date": "2026-10-16",
@@ -74,6 +74,13 @@ def test_bond_section_none_when_all_rates_fail():
     assert bond_message.build_bond_section(snap) is None
 
 
+def test_news_section_numbers_bullets_and_handles_empty():
+    text = news_section.build_news_section(["연준 발언 주목", "반도체주 강세"])
+    assert text == "[전일 핵심 이슈]\n1. 연준 발언 주목\n2. 반도체주 강세"
+    assert news_section.build_news_section(None) is None
+    assert news_section.build_news_section([]) is None
+
+
 if __name__ == "__main__":
     test_trade_date_header()
     test_bp_formatting()
@@ -82,4 +89,5 @@ if __name__ == "__main__":
     test_stock_section_skips_failed_sections_and_groups_by_sector()
     test_bond_section_uses_bp_and_skips_failed_rate()
     test_bond_section_none_when_all_rates_fail()
+    test_news_section_numbers_bullets_and_handles_empty()
     print("all tests passed")
