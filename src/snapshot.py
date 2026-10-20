@@ -43,9 +43,10 @@ def build_snapshot() -> dict:
 
     # --- 시가총액 상위 20개 종목 ---
     top20: list[dict] = []
-    for ticker, display_name in config.TOP20_TICKERS:
+    for stock in config.TOP20_STOCKS:
+        ticker = stock["ticker"]
         result = yfinance_client.fetch_last_two_closes(ticker)
-        entry = {"ticker": ticker, "name": display_name, **result}
+        entry = {"ticker": ticker, "name_kr": stock["name_kr"], "sector": stock["sector"], **result}
         top20.append(entry)
         if result.get("ok"):
             trade_dates.add(result["trade_date"])

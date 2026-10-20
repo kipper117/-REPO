@@ -27,6 +27,31 @@ def format_pct(change_pct: float) -> str:
     return f"{sign}{change_pct:.2f}%"
 
 
+def arrow_for_pct(change_pct: float, flat_threshold: float = 0.02) -> str:
+    """등락률 기준 화살표. ±flat_threshold(%) 이내는 보합(➖)."""
+    if change_pct > flat_threshold:
+        return "▲"
+    if change_pct < -flat_threshold:
+        return "▼"
+    return "➖"
+
+
+def arrow_for_bp(change_bp: float, flat_threshold_bp: float = 0.5) -> str:
+    if change_bp > flat_threshold_bp:
+        return "▲"
+    if change_bp < -flat_threshold_bp:
+        return "▼"
+    return "➖"
+
+
+def format_pct_with_arrow(change_pct: float) -> str:
+    return f"{arrow_for_pct(change_pct)} {format_pct(change_pct)}"
+
+
+def format_bp_with_arrow(change_bp: float) -> str:
+    return f"{arrow_for_bp(change_bp)} {format_bp(change_bp)}"
+
+
 def label_for_group(entries: list[dict]) -> str:
     """
     entries: [{"change_pct": float, "ok": True}, ...] (ok=True인 것만 평균 계산)

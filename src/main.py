@@ -56,11 +56,14 @@ def run() -> None:
     headlines = news.get("headlines") if news.get("ok") else None
     comment = claude_comment.generate_one_line_comment(snap, headlines)
 
-    stock_text = stock_message.build_stock_message(snap, comment)
-    bond_text = bond_message.build_bond_message(snap, comment)
+    parts = [stock_message.build_stock_section(snap)]
+    bond_section = bond_message.build_bond_section(snap)
+    if bond_section:
+        parts.append(bond_section)
+    if comment:
+        parts.append(f"> {comment}")
 
-    telegram_sender.send_briefing(stock_text)
-    telegram_sender.send_briefing(bond_text)
+    telegram_sender.send_briefing("\n\n".join(parts))
     telegram_sender.send_warning(snap["failures"], snap["anomalies"])
 
     logger.info("done. failures=%d anomalies=%d", len(snap["failures"]), len(snap["anomalies"]))

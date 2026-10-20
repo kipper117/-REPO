@@ -17,29 +17,33 @@ INDEX_TICKERS = {
 # ---------------------------------------------------------------------------
 # 시가총액 상위 20개 종목 (yfinance 티커)
 # 주의: 시가총액 순위는 수시로 바뀐다. 분기 1회 정도 수동 점검 권장.
+# sector는 문자 안에서 그룹핑 + 섹터별 강세/약세 라벨에 쓰인다.
 # ---------------------------------------------------------------------------
-TOP20_TICKERS = [
-    ("AAPL", "Apple"),
-    ("MSFT", "Microsoft"),
-    ("NVDA", "Nvidia"),
-    ("GOOGL", "Alphabet"),
-    ("AMZN", "Amazon"),
-    ("META", "Meta Platforms"),
-    ("AVGO", "Broadcom"),
-    ("TSLA", "Tesla"),
-    ("BRK-B", "Berkshire Hathaway"),
-    ("LLY", "Eli Lilly"),
-    ("WMT", "Walmart"),
-    ("JPM", "JPMorgan Chase"),
-    ("V", "Visa"),
-    ("ORCL", "Oracle"),
-    ("MA", "Mastercard"),
-    ("NFLX", "Netflix"),
-    ("XOM", "ExxonMobil"),
-    ("COST", "Costco"),
-    ("PG", "Procter & Gamble"),
-    ("JNJ", "Johnson & Johnson"),
+TOP20_STOCKS = [
+    {"ticker": "AAPL", "name_kr": "애플", "sector": "기술"},
+    {"ticker": "MSFT", "name_kr": "마이크로소프트", "sector": "기술"},
+    {"ticker": "NVDA", "name_kr": "엔비디아", "sector": "기술"},
+    {"ticker": "GOOGL", "name_kr": "알파벳", "sector": "기술"},
+    {"ticker": "META", "name_kr": "메타플랫폼스", "sector": "기술"},
+    {"ticker": "AVGO", "name_kr": "브로드컴", "sector": "기술"},
+    {"ticker": "ORCL", "name_kr": "오라클", "sector": "기술"},
+    {"ticker": "NFLX", "name_kr": "넷플릭스", "sector": "기술"},
+    {"ticker": "AMZN", "name_kr": "아마존", "sector": "소비재"},
+    {"ticker": "TSLA", "name_kr": "테슬라", "sector": "소비재"},
+    {"ticker": "WMT", "name_kr": "월마트", "sector": "소비재"},
+    {"ticker": "COST", "name_kr": "코스트코", "sector": "소비재"},
+    {"ticker": "PG", "name_kr": "프록터앤드갬블", "sector": "소비재"},
+    {"ticker": "BRK-B", "name_kr": "버크셔해서웨이", "sector": "금융"},
+    {"ticker": "JPM", "name_kr": "JP모건체이스", "sector": "금융"},
+    {"ticker": "V", "name_kr": "비자", "sector": "금융"},
+    {"ticker": "MA", "name_kr": "마스터카드", "sector": "금융"},
+    {"ticker": "LLY", "name_kr": "일라이릴리", "sector": "헬스케어"},
+    {"ticker": "JNJ", "name_kr": "존슨앤드존슨", "sector": "헬스케어"},
+    {"ticker": "XOM", "name_kr": "엑슨모빌", "sector": "에너지"},
 ]
+
+# 문자에 섹터를 출력할 순서
+SECTOR_ORDER = ["기술", "소비재", "금융", "헬스케어", "에너지"]
 
 # ---------------------------------------------------------------------------
 # 채권 / 금리 (FRED 시리즈 ID 기준)
@@ -47,6 +51,7 @@ TOP20_TICKERS = [
 # ---------------------------------------------------------------------------
 FRED_SERIES = {
     "US10Y": "DGS10",  # 10년물 국채금리
+    "US30Y": "DGS30",  # 30년물 국채금리
 }
 
 # ---------------------------------------------------------------------------
