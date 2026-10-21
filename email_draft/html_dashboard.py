@@ -11,11 +11,20 @@ from __future__ import annotations
 
 from datetime import datetime
 
-POSITIVE = "#c0392b"  # 빨강 (상승)
+POSITIVE = "#c0392b"  # 빨강 (상승) — bp 등 등급 없는 셀에 쓰는 기본색
 NEGATIVE = "#1a56db"  # 파랑 (하락)
 HEADER_BG = "#ded6c3"
 ROW_ALT_BG = "#f7f5f0"
 BORDER = "#d9d3c4"
+
+# 등락률 10%p 단위 구간별 농도 (0~10/10~20/20~30/30~40/40~50/50%+), 옅음 -> 짙음
+_RED_SHADES = ["#e57373", "#ef5350", "#e53935", "#c62828", "#b71c1c", "#7f0000"]
+_BLUE_SHADES = ["#64b5f6", "#42a5f5", "#1e88e5", "#1565c0", "#0d47a1", "#002171"]
+
+
+def _shade_for_pct(pct: float) -> str:
+    band = min(int(abs(pct) // 10), len(_RED_SHADES) - 1)
+    return (_RED_SHADES if pct >= 0 else _BLUE_SHADES)[band]
 
 _TABLE_STYLE = (
     f"border-collapse:collapse;width:100%;max-width:640px;"
@@ -39,9 +48,18 @@ def _fmt_bp(v: float) -> str:
 
 
 def _change_cell(formatted: str, is_positive: bool) -> str:
+    """등급 없이 상승/하락 두 색만 쓰는 셀 (bp 등 % 구간 농도가 의미 없는 값용)."""
     if not formatted:
         return f'<td style="{_TD_STYLE}color:#999;">-</td>'
     color = POSITIVE if is_positive else NEGATIVE
+    return f'<td style="{_TD_STYLE}color:{color};font-weight:bold;">{formatted}</td>'
+
+
+def _change_cell_graded(formatted: str, pct: float | None) -> str:
+    """등락률 크기(10%p 구간)에 따라 빨강/파랑 농도가 짙어지는 셀."""
+    if not formatted or pct is None:
+        return f'<td style="{_TD_STYLE}color:#999;">-</td>'
+    color = _shade_for_pct(pct)
     return f'<td style="{_TD_STYLE}color:{color};font-weight:bold;">{formatted}</td>'
 
 
@@ -84,23 +102,24 @@ def _week_bp(history: dict, key: str, trade_date: str, current_value: float) -> 
 
 def _index_row(name: str, entry: dict, alt: bool, history: dict, trade_date: str) -> str:
     bg = f"background:{ROW_ALT_BG};" if alt else ""
-    day = _change_cell(_fmt_pct(entry["change_pct"]), entry["change_pct"] >= 0)
+    day = _change_cell_graded(_fmt_pct(entry["change_pct"]), entry["change_pct"])
     cells = [f'<td style="{_TD_STYLE}">{name}</td>', f'<td style="{_TD_STYLE}">{entry["value"]:,.2f}</td>', day]
     if history:
         wp = _week_pct(history, name, trade_date, entry["value"])
-        cells.append(_change_cell(_fmt_pct(wp) if wp is not None else "", (wp is not None and wp >= 0)))
+        cells.append(_change_cell_graded(_fmt_pct(wp) if wp is not None else "", wp))
     return f'<tr style="{bg}">{"".join(cells)}</tr>'
 
 
 def build_highlight_bar(snapshot: dict) -> str:
-    """메일 맨 위에 올릴 3~4개 핵심 지표 하이라이트 박스."""
+    """메일 맨 위에 올릴 핵심 지표(현재가+등락률) 하이라이트 박스."""
     idx = snapshot["indices"]
     fx = snapshot.get("fx", {})
     gidx = snapshot.get("global_indices", {})
 
     candidates = [
         ("코스피", gidx.get("KOSPI")),
-        ("다우", idx.get("DOW")),
+        ("코스닥", gidx.get("KOSDAQ")),
+        ("S&P500", idx.get("S&P500")),
         ("나스닥", idx.get("NASDAQ")),
         ("원/달러", fx.get("USDKRW")),
     ]
@@ -108,11 +127,11 @@ def build_highlight_bar(snapshot: dict) -> str:
     for name, e in candidates:
         if not e or not e.get("ok"):
             continue
-        is_pos = e["change_pct"] >= 0
-        color = POSITIVE if is_pos else NEGATIVE
+        color = _shade_for_pct(e["change_pct"])
         chips.append(
-            f'<span style="display:inline-block;margin:0 10px 6px 0;font-size:13px;">'
-            f'<b>{name}</b> <span style="color:{color};font-weight:bold;">{_fmt_pct(e["change_pct"])}</span>'
+            f'<span style="display:inline-block;margin:0 14px 6px 0;font-size:13px;">'
+            f'<b>{name}</b> {e["value"]:,.2f} '
+            f'<span style="color:{color};font-weight:bold;">{_fmt_pct(e["change_pct"])}</span>'
             f"</span>"
         )
     if not chips:
@@ -183,7 +202,7 @@ def build_dashboard_html(snapshot: dict, history: dict | None = None) -> str:
         if not s.get("ok"):
             continue
         bg = f"background:{ROW_ALT_BG};" if i % 2 == 1 else ""
-        day = _change_cell(_fmt_pct(s["change_pct"]), s["change_pct"] >= 0)
+        day = _change_cell_graded(_fmt_pct(s["change_pct"]), s["change_pct"])
         cells = [
             f'<td style="{_TD_STYLE}">{s["name_kr"]}</td>',
             f'<td style="{_TD_STYLE}">{s["ticker"]}</td>',
@@ -193,7 +212,7 @@ def build_dashboard_html(snapshot: dict, history: dict | None = None) -> str:
         ]
         if history:
             wp = _week_pct(history, s["ticker"], trade_date, s["value"])
-            cells.append(_change_cell(_fmt_pct(wp) if wp is not None else "", (wp is not None and wp >= 0)))
+            cells.append(_change_cell_graded(_fmt_pct(wp) if wp is not None else "", wp))
         stock_rows.append(f'<tr style="{bg}">{"".join(cells)}</tr>')
     parts.append(
         _section_table("시가총액 상위 종목", ["종목명", "티커", "섹터", "종가", *change_headers], stock_rows)
