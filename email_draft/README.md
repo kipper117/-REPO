@@ -34,6 +34,32 @@ history = sheet_history.load_history()  # 설정 안 돼 있으면 빈 dict (전
 
 데이터가 일주일 미만이면 전주비 칸은 자연스럽게 빈 칸("-")으로 나온다.
 
+## 합쳐서 "풍성한" 메일 만들기 (시황 + 리포트 요약)
+
+평소처럼 Claude Code 세션(지금 이 대화)에서:
+1. "이 폴더(예: `261021_리포트`)랑 오늘 시황 데이터 합쳐서 메일 만들어줘" 라고 요청
+2. `pdf_reader.load_reports()`로 리포트 읽고, `src.snapshot.build_snapshot()`로 시황 데이터 수집
+3. Claude(지금 이 세션)가 시황 서술 + 리포트별 요약 문장을 작성
+4. `email_draft/rich_email.py`의 `build()`로 한 번에 조립:
+
+```python
+from email_draft import rich_email, sheet_history, gmail_client
+
+built = rich_email.build(
+    subject="(삼성증권 이동주PB) 10/21 시황 브리핑",
+    intro="오늘 국내외 증시 동향과 함께 받은 리포트를 정리해 보내드립니다.",
+    sections=[("美 증시 (...)", "..."), ...],          # 시황 서술
+    snapshot=snap,                                      # src.snapshot.build_snapshot() 결과
+    history=sheet_history.load_history(),                # 선택: 전주비
+    report_sections=[("KB증권 - ...", "..."), ...],      # 선택: 리포트 요약
+    headlines=[("번역된 헤드라인", "로이터"), ...],       # 선택
+)
+gmail_client.create_draft(built["subject"], built["plain"], html_body=built["html"])
+```
+
+리포트 요약은 "관련 리포트 요약" 섹션으로 대시보드 표 바로 위에 들어간다.
+리포트 폴더 없이 시황 데이터만으로도(`report_sections` 생략) 그대로 동작한다.
+
 ## 최초 1회 설정
 
 ### 1) 패키지 설치
