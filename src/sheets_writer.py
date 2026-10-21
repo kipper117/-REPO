@@ -318,7 +318,21 @@ def _rebuild_dashboard(ws, snapshot: dict, history: dict) -> None:
 
     ws.update(range_name="A1", values=grid)
 
-    requests = []
+    # ws.clear()는 셀 "값"만 지우고 서식(글자색/배경/병합)은 남긴다.
+    # 레이아웃이 실행마다 바뀔 수 있으므로, 매번 그리기 전에 시트 전체의 서식/병합을 먼저 초기화한다.
+    full_range = {
+        "sheetId": ws.id,
+        "startRowIndex": 0, "endRowIndex": ws.row_count,
+        "startColumnIndex": 0, "endColumnIndex": ws.col_count,
+    }
+    requests = [
+        {"unmergeCells": {"range": full_range}},
+        {"repeatCell": {
+            "range": full_range,
+            "cell": {"userEnteredFormat": {}},
+            "fields": "userEnteredFormat",
+        }},
+    ]
     for row_1idx, start_col, end_col in header_cells:
         requests.append({
             "repeatCell": {
