@@ -8,8 +8,6 @@ from __future__ import annotations
 import logging
 import os
 
-import anthropic
-
 from . import config
 
 logger = logging.getLogger(__name__)
@@ -38,6 +36,11 @@ def compose(reports: list[dict]) -> dict:
     성공: {"ok": True, "subject": "...", "body": "..."}
     실패: {"ok": False, "reason": "..."}
     """
+    try:
+        import anthropic
+    except ImportError:
+        return {"ok": False, "reason": "anthropic package not installed"}
+
     usable = [r for r in reports if r.get("text", "").strip()]
     if not usable:
         return {"ok": False, "reason": "추출된 텍스트가 있는 리포트가 없습니다."}
