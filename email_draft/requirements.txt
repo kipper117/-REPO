@@ -1,0 +1,5 @@
+pdfplumber>=0.11
+anthropic>=0.40
+google-api-python-client>=2.140
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.2

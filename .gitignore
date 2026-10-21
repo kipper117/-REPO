@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# email_draft: OAuth 클라이언트 비밀/토큰은 절대 커밋하지 않는다
+email_draft/credentials/*.json

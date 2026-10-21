@@ -16,9 +16,14 @@ GitHub Actions 스케줄로 실행되며, 수동 실행(`workflow_dispatch`)도 
 5. `src/telegram_sender.py` — 전일 핵심 이슈 + 주식/채권 섹션을 하나로 합쳐 발송하고,
    실패/이상치는 별도 경고 메시지로 보낸다.
 6. `src/sheets_writer.py` — (선택) 같은 snapshot을 구글 스프레드시트에 기록한다.
-   - `Data` 탭: 날짜별 롱포맷 원본 누적 (분석/피벗용)
-   - `Dashboard` 탭: 그날 스냅샷 전체를 한 장표로 보여주며 매번 다시 그린다
-     (상승=초록 글자, 하락=파랑 글자)
+   - `Data` 탭: 날짜별 롱포맷 원본 누적 (분석/피벗용, "전주비" 계산의 히스토리 소스)
+   - `Dashboard` 탭: "Market Daily" 스타일 한 장표로 매번 다시 그린다
+     (미국지수 | 해외지수 | 환율·금리·원자재 3단 배치 + 종목표, 상승=빨강 / 하락=파랑 글자)
+
+## 관련 도구: `email_draft/`
+
+리포트 PDF 폴더 → Claude 요약 → Gmail 초안 생성 (자동 발송 안 함). 이 봇과 별개로
+**로컬 PC에서 직접 실행**하는 도구다. 자세한 내용은 `email_draft/README.md` 참고.
 
 ## 환경변수 (GitHub Secrets 또는 로컬 `.env`)
 
