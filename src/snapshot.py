@@ -50,6 +50,18 @@ def build_snapshot() -> dict:
         else:
             failures.append({"item": name, "reason": result.get("reason")})
 
+    # --- 기타 환율 (원/달러 등) ---
+    fx: dict[str, dict] = {}
+    for name, ticker in config.FX_TICKERS.items():
+        result = yfinance_client.fetch_last_two_closes(ticker)
+        fx[name] = result
+        if result.get("ok"):
+            trade_dates_seen.append(result["trade_date"])
+            if _check_stock_anomaly(result["change_pct"]):
+                anomalies.append({"item": name, "value": result["change_pct"], "kind": "stock_pct"})
+        else:
+            failures.append({"item": name, "reason": result.get("reason")})
+
     # --- 시가총액 상위 20개 종목 ---
     top20: list[dict] = []
     for stock in config.TOP20_STOCKS:
@@ -90,6 +102,7 @@ def build_snapshot() -> dict:
         "trade_date": trade_date,
         "trade_dates_seen": sorted(set(trade_dates_seen)),
         "indices": indices,
+        "fx": fx,
         "top20_stocks": top20,
         "rates": rates,
         "news": news,
