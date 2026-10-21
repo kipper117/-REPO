@@ -62,6 +62,30 @@ def build_snapshot() -> dict:
         else:
             failures.append({"item": name, "reason": result.get("reason")})
 
+    # --- 해외 지수 (거래소 휴장일이 제각각이라 대표 거래일 판정에서 제외) ---
+    global_indices: dict[str, dict] = {}
+    for name, ticker in config.GLOBAL_INDEX_TICKERS.items():
+        result = yfinance_client.fetch_last_two_closes(ticker)
+        global_indices[name] = result
+        if result.get("ok"):
+            trade_dates_seen.append(result["trade_date"])
+            if _check_stock_anomaly(result["change_pct"]):
+                anomalies.append({"item": name, "value": result["change_pct"], "kind": "stock_pct"})
+        else:
+            failures.append({"item": name, "reason": result.get("reason")})
+
+    # --- 원자재 (WTI 등) ---
+    commodities: dict[str, dict] = {}
+    for name, ticker in config.COMMODITY_TICKERS.items():
+        result = yfinance_client.fetch_last_two_closes(ticker)
+        commodities[name] = result
+        if result.get("ok"):
+            trade_dates_seen.append(result["trade_date"])
+            if _check_stock_anomaly(result["change_pct"]):
+                anomalies.append({"item": name, "value": result["change_pct"], "kind": "stock_pct"})
+        else:
+            failures.append({"item": name, "reason": result.get("reason")})
+
     # --- 시가총액 상위 20개 종목 ---
     top20: list[dict] = []
     for stock in config.TOP20_STOCKS:
@@ -103,6 +127,8 @@ def build_snapshot() -> dict:
         "trade_dates_seen": sorted(set(trade_dates_seen)),
         "indices": indices,
         "fx": fx,
+        "global_indices": global_indices,
+        "commodities": commodities,
         "top20_stocks": top20,
         "rates": rates,
         "news": news,
