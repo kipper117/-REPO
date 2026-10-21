@@ -60,8 +60,11 @@ def _already_logged(ws, trade_date: str) -> bool:
 # Data 탭: 롱포맷 누적
 # ---------------------------------------------------------------------------
 def _append_data_rows(ws_data, snapshot: dict) -> dict:
-    if not ws_data.get_all_values():
-        ws_data.append_row(DATA_HEADER)
+    existing = ws_data.get_all_values()
+    # get_all_values()가 빈 시트에서도 "" 로 채워진 행을 돌려주는 경우가 있어
+    # `not existing`만으로는 헤더 누락을 못 잡는다. 첫 행이 기대 헤더와 다르면 끼워 넣는다.
+    if not existing or existing[0] != DATA_HEADER:
+        ws_data.insert_row(DATA_HEADER, index=1)
 
     trade_date = snapshot["trade_date"]
     if _already_logged(ws_data, trade_date):

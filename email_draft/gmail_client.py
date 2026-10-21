@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from google.auth.transport.requests import Request
@@ -47,17 +48,26 @@ def _get_credentials() -> Credentials:
     return creds
 
 
-def create_draft(subject: str, body: str, to: str = "") -> dict:
+def create_draft(subject: str, body: str, to: str = "", html_body: str | None = None) -> dict:
     """
     성공: {"ok": True, "draft_id": "..."}
     실패: {"ok": False, "reason": "..."}
     수신자(to)를 비워두면 Gmail에서 열었을 때 직접 입력하면 된다 (검수 후 발송 전제).
+
+    html_body를 주면 text/plain(body, fallback) + text/html(html_body)로 구성된
+    multipart/alternative 메일을 만든다. 안 주면 지금까지처럼 순수 텍스트 메일.
     """
     try:
         creds = _get_credentials()
         service = build("gmail", "v1", credentials=creds)
 
-        message = MIMEText(body)
+        if html_body:
+            message = MIMEMultipart("alternative")
+            message.attach(MIMEText(body, "plain", "utf-8"))
+            message.attach(MIMEText(html_body, "html", "utf-8"))
+        else:
+            message = MIMEText(body, "plain", "utf-8")
+
         message["subject"] = subject
         if to:
             message["to"] = to

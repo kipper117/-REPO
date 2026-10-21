@@ -15,6 +15,13 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
 # 리포트 폴더 이름 규칙: "YYMMDD_리포트" (바탕화면 등에 직접 만드는 걸 가정, 고정 위치 강제 안 함)
 REPORT_FILENAME_SEP = "_"  # "{증권사}_{주제}_{제목}_{YYYYMMDD}.pdf" 패턴 파싱용
 
+# 구글 시트 "Data" 탭 히스토리 읽기 (전주비 계산용, 선택 기능)
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "")
+GOOGLE_SERVICE_ACCOUNT_PATH = os.environ.get(
+    "GOOGLE_SERVICE_ACCOUNT_PATH",
+    os.path.join(os.path.dirname(__file__), "credentials", "service_account.json"),
+)
+
 # Gmail API: 초안(draft) 생성만 가능한 최소 권한 스코프
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.compose"]
 GMAIL_CLIENT_SECRET_PATH = os.environ.get(
